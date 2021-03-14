@@ -16,27 +16,27 @@ pub struct DefaultHashTableGrower {
 impl Default for DefaultHashTableGrower
 {
     fn default() -> Self {
-        return DefaultHashTableGrower {
+        DefaultHashTableGrower {
             size_degree: 8
-        };
+        }
     }
 }
 
 impl IHashTableGrower for DefaultHashTableGrower {
     fn max_size(&self) -> isize {
-        return (1 as isize) << self.size_degree;
+        1_isize << self.size_degree
     }
 
     fn overflow(&self, size: usize) -> bool {
-        return size > ((1 as usize) << (self.size_degree - 1));
+        size > ((1_usize) << (self.size_degree - 1))
     }
 
     fn place(&self, hash_value: u64) -> isize {
-        return hash_value as isize & (((1 as isize) << self.size_degree) - 1);
+        hash_value as isize & (((1_isize) << self.size_degree) - 1)
     }
 
     fn next_place(&self, old_place: isize) -> isize {
-        return (old_place + 1) & (((1 as isize) << self.size_degree) - 1);
+        (old_place + 1) & ((1_isize << self.size_degree) - 1)
     }
 
     fn increase_size(&mut self) {

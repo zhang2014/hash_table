@@ -36,14 +36,14 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
 
 impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IHasher<Key>, Grower: IHashTableGrower + Default + Clone> HashTable<Key, HashTableEntity, Hasher, Grower> {
     pub fn new() -> HashTable<Key, HashTableEntity, Hasher, Grower> {
-        /// TODO:
+        // TODO:
         let size = (1 << 8) * mem::size_of::<HashTableEntity>();
-        return unsafe {
+        unsafe {
             let layout = Layout::from_size_align_unchecked(size, mem::align_of::<HashTableEntity>());
             let raw_ptr = std::alloc::alloc_zeroed(layout);
             let entities_ptr = raw_ptr as *mut HashTableEntity;
             // println!("{:?}", entities_ptr.as_ref().unwrap().get_key());
-            return HashTable {
+            HashTable {
                 size: 0,
                 grower: Default::default(),
                 entities: entities_ptr,
@@ -52,8 +52,8 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
                 zero_entity_raw: None,
                 key_hold: PhantomData,
                 hasher_hold: PhantomData,
-            };
-        };
+            }
+        }
     }
 
     #[inline(always)]
@@ -70,16 +70,16 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
         if !HashTableEntity::is_zero_s(key) {
             let hash_value = Hasher::hash(key);
             let place_value = self.find_entity(key, hash_value);
-            return unsafe {
+            unsafe {
                 let value = self.entities.offset(place_value);
                 return match value.as_ref().unwrap().is_zero() {
                     true => None,
                     false => Some(value)
                 };
-            };
+            }
         }
 
-        return self.zero_entity;
+        self.zero_entity
     }
 
     #[inline(always)]
@@ -97,11 +97,11 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
     #[inline(always)]
     fn insert_non_zero_key(&mut self, key: &Key, hash_value: u64, inserted: bool) -> *mut HashTableEntity {
         let place_value = self.find_entity(key, hash_value);
-        return self.insert_non_zero_key_impl(place_value, key, hash_value, inserted);
+        self.insert_non_zero_key_impl(place_value, key, hash_value, inserted)
     }
 
     #[inline(always)]
-    fn insert_non_zero_key_impl(&mut self, place_value: isize, key: &Key, hash_value: u64, inserted: bool) -> *mut HashTableEntity {
+    fn insert_non_zero_key_impl(&mut self, place_value: isize, key: &Key, hash_value: u64, _inserted: bool) -> *mut HashTableEntity {
         unsafe {
             let entity = self.entities.offset(place_value).as_mut().unwrap();
 
@@ -110,8 +110,8 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
                 return self.entities.offset(place_value);
             }
 
+            self.size += 1;
             entity.set_key_and_hash(key, hash_value);
-            self.size = self.size + 1;
 
             if self.grower.overflow(self.size) {
                 self.resize();
@@ -120,12 +120,12 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
                 return self.entities.offset(place_value);
             }
 
-            return self.entities.offset(place_value);
+            self.entities.offset(place_value)
         }
     }
 
     #[inline(always)]
-    fn insert_if_zero_key(&mut self, key: &Key, hash_value: u64, inserted: bool) -> Option<*mut HashTableEntity> {
+    fn insert_if_zero_key(&mut self, key: &Key, hash_value: u64, _inserted: bool) -> Option<*mut HashTableEntity> {
         if HashTableEntity::is_zero_s(key) {
             if self.zero_entity.is_none() {
                 unsafe {
@@ -141,7 +141,7 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
             return self.zero_entity;
         }
 
-        return None;
+        Option::None
     }
 
     unsafe fn resize(&mut self)
@@ -151,7 +151,7 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
 
         new_grower.increase_size();
 
-        /// Realloc memory
+        // Realloc memory
         if new_grower.max_size() > self.grower.max_size() {
             let new_size = (new_grower.max_size() as usize) * std::mem::size_of::<HashTableEntity>();
             let layout = Layout::from_size_align_unchecked(new_size, std::mem::align_of::<HashTableEntity>());
@@ -169,14 +169,13 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
                 }
             }
 
-            /** There is also a special case:
-              *    if the element was to be at the end of the old buffer,                  [        x]
-              *    but is at the beginning because of the collision resolution chain,      [o       x]
-              *    then after resizing, it will first be out of place again,               [        xo        ]
-              *    and in order to transfer it where necessary,
-              *    after transferring all the elements from the old halves you need to     [         o   x    ]
-              *    process tail from the collision resolution chain immediately after it   [        o    x    ]
-              */
+            // There is also a special case:
+            //      if the element was to be at the end of the old buffer,                  [        x]
+            //      but is at the beginning because of the collision resolution chain,      [o       x]
+            //      then after resizing, it will first be out of place again,               [        xo        ]
+            //      and in order to transfer it where necessary,
+            //      after transferring all the elements from the old halves you need to     [         o   x    ]
+            //      process tail from the collision resolution chain immediately after it   [        o    x    ]
             for index in old_size..self.grower.max_size() {
                 let entity = self.entities.offset(index).as_mut().unwrap();
 
@@ -186,9 +185,6 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
                 self.reinsert(self.entities.offset(index), entity.get_hash());
             }
         }
-
-
-        unsafe {}
     }
 
     #[inline(always)]
@@ -202,7 +198,7 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
             }
         }
 
-        return place_value;
+        place_value
     }
 }
 

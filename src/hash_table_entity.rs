@@ -4,7 +4,7 @@ pub trait IHashTableEntity<Key>
     fn is_zero_s(key: &Key) -> bool;
 
     fn is_zero(&self) -> bool;
-    fn set_zero(&mut self) -> ();
+    fn set_zero(&mut self);
     fn key_equals(&self, key: &Key, hash: u64) -> bool;
     fn set_key_and_hash(&mut self, key: &Key, hash: u64);
 
@@ -20,38 +20,34 @@ pub struct DefaultHashTableEntity {
 
 impl PartialEq for DefaultHashTableEntity {
     fn eq(&self, other: &Self) -> bool {
-        return self.key == other.key;
-    }
-
-    fn ne(&self, other: &Self) -> bool {
-        return !self.eq(other);
+        self.key == other.key
     }
 }
 
 impl IHashTableEntity<i32> for DefaultHashTableEntity
 {
     fn new_zero() -> Self {
-        return DefaultHashTableEntity {
+        DefaultHashTableEntity {
             key: 0,
             hash: 0,
-        };
+        }
     }
 
     fn is_zero_s(key: &i32) -> bool {
-        return *key == 0;
+        *key == 0
     }
 
     fn is_zero(&self) -> bool {
-        return self.key == 0;
+        self.key == 0
     }
 
-    fn set_zero(&mut self) -> () {
+    fn set_zero(&mut self) {
         self.key = 0;
         self.hash = 0;
     }
 
-    fn key_equals(&self, key: &i32, hash: u64) -> bool {
-        return self.key == *key;
+    fn key_equals(&self, key: &i32, _hash: u64) -> bool {
+        self.key == *key
     }
 
     fn set_key_and_hash(&mut self, key: &i32, hash: u64) {
@@ -60,11 +56,11 @@ impl IHashTableEntity<i32> for DefaultHashTableEntity
     }
 
     fn get_key(&self) -> &i32 {
-        return &self.key;
+        unsafe { &self.key }
     }
 
     fn get_hash(&self) -> u64 {
-        return self.hash;
+        self.hash
     }
 }
 
