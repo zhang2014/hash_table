@@ -1,22 +1,18 @@
-
 use crate::hash_table::{DefaultHashTableEntity, DefaultHashTableGrower, HashTable};
 use crate::hash_table::DefaultHasher;
 
 mod hash_table;
 
 fn main() {
-    println!("{:?}, {:?}", std::mem::size_of::<DefaultHashTableEntity>(), std::mem::align_of::<DefaultHashTableEntity>());
-
     rust_hash_map_bench(100000000);
     rust_btree_map_bench(100000000);
     hash_table_bench(100000000);
-    // hash_table_bench(100000000);
 }
 
 fn hash_table_bench(bench_count: i32) {
     let system_time = std::time::SystemTime::now();
     let inserted = true;
-    let mut hash_table = HashTable::<i32, DefaultHashTableEntity, DefaultHasher, DefaultHashTableGrower>::new();
+    let mut hash_table = HashTable::<i32, DefaultHashTableEntity, DefaultHasher<i32>, DefaultHashTableGrower>::new();
     for index in 0..bench_count {
         hash_table.insert_key(index, inserted);
     }

@@ -12,7 +12,6 @@ pub struct DefaultHashTableGrower {
     size_degree: u8
 }
 
-
 impl Default for DefaultHashTableGrower
 {
     fn default() -> Self {
