@@ -1,12 +1,15 @@
+// use std::intrinsics::prefetch_read_data;
+
 use std::alloc::Layout;
 use std::marker::PhantomData;
 use std::mem;
 
+include!("allocator.rs");
 include!("hash_table_entity.rs");
 include!("hash_table_grower.rs");
 include!("hash_table_hasher.rs");
 
-pub struct HashTable<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IHasher<Key>, Grower: IHashTableGrower + Default + Clone> {
+pub struct HashTable<Key, HashTableEntity: IHashTableEntity<Key, HashTableEntity> + Sized + PartialEq, Hasher: IHasher<Key>, Grower: IHashTableGrower + Default + Clone, MemoryAllocator: Allocator + Default> {
     size: usize,
     grower: Grower,
     entities: *mut HashTableEntity,
@@ -17,14 +20,16 @@ pub struct HashTable<Key, HashTableEntity: IHashTableEntity<Key> + Sized + Parti
     /// Generics hold
     key_hold: PhantomData<Key>,
     hasher_hold: PhantomData<Hasher>,
+    allocator: MemoryAllocator,
 }
 
-impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IHasher<Key>, Grower: IHashTableGrower + Default + Clone> Drop for HashTable<Key, HashTableEntity, Hasher, Grower> {
+impl<Key, HashTableEntity: IHashTableEntity<Key, HashTableEntity> + Sized + PartialEq, Hasher: IHasher<Key>, Grower: IHashTableGrower + Default + Clone, MemoryAllocator: Allocator + Default> Drop for HashTable<Key, HashTableEntity, Hasher, Grower, MemoryAllocator> {
     fn drop(&mut self) {
         unsafe {
-            let size = (self.grower.max_size() as usize) * mem::size_of::<HashTableEntity>();
-            let layout = Layout::from_size_align_unchecked(size, std::mem::align_of::<HashTableEntity>());
-            std::alloc::dealloc(self.entities_raw, layout);
+            // let size = (self.grower.max_size() as usize) * mem::size_of::<HashTableEntity>();
+            // let layout = Layout::from_size_align_unchecked(size, std::mem::align_of::<HashTableEntity>());
+            // self.allocator.free(self.entities_raw, size);
+            // std::alloc::dealloc(self.entities_raw, layout);
 
             if self.zero_entity.is_some() {
                 let zero_layout = Layout::from_size_align_unchecked(mem::size_of::<HashTableEntity>(), std::mem::align_of::<HashTableEntity>());
@@ -34,13 +39,15 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
     }
 }
 
-impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IHasher<Key>, Grower: IHashTableGrower + Default + Clone> HashTable<Key, HashTableEntity, Hasher, Grower> {
-    pub fn new() -> HashTable<Key, HashTableEntity, Hasher, Grower> {
+impl<Key, HashTableEntity: IHashTableEntity<Key, HashTableEntity> + Sized + PartialEq, Hasher: IHasher<Key>, Grower: IHashTableGrower + Default + Clone, MemoryAllocator: Allocator + Default> HashTable<Key, HashTableEntity, Hasher, Grower, MemoryAllocator> {
+    pub fn new() -> HashTable<Key, HashTableEntity, Hasher, Grower, MemoryAllocator> {
         // TODO:
         let size = (1 << 8) * mem::size_of::<HashTableEntity>();
         unsafe {
-            let layout = Layout::from_size_align_unchecked(size, mem::align_of::<HashTableEntity>());
-            let raw_ptr = std::alloc::alloc_zeroed(layout);
+            let alloc: MemoryAllocator = Default::default();
+            let raw_ptr = alloc.alloc(size, mem::align_of::<HashTableEntity>()).unwrap();
+            // let layout = Layout::from_size_align_unchecked(size, mem::align_of::<HashTableEntity>());
+            // let raw_ptr = std::alloc::alloc_zeroed(layout);
             let entities_ptr = raw_ptr as *mut HashTableEntity;
             HashTable {
                 size: 0,
@@ -51,6 +58,7 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
                 zero_entity_raw: None,
                 key_hold: PhantomData,
                 hasher_hold: PhantomData,
+                allocator: Default::default(),
             }
         }
     }
@@ -66,7 +74,7 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
 
     #[inline(always)]
     pub fn find_key(&self, key: &Key) -> Option<*mut HashTableEntity> {
-        if !HashTableEntity::is_zero_s(key) {
+        if !HashTableEntity::is_zero_key(key) {
             let hash_value = Hasher::hash(key);
             let place_value = self.find_entity(key, hash_value);
             unsafe {
@@ -85,11 +93,16 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
     fn find_entity(&self, key: &Key, hash_value: u64) -> isize {
         let mut place_value = self.grower.place(hash_value);
         loop {
-            let entity = unsafe { self.entities.offset(place_value as isize).as_ref() }.unwrap();
-            if entity.is_zero() || entity.key_equals(key, hash_value) {
-                return place_value;
+            unsafe {
+                let next_place_value = self.grower.next_place(place_value);
+                // std::intrinsics::prefetch_read_data(self.entities.offset(next_place_value), 0);
+
+                let entity = self.entities.offset(place_value).as_ref().unwrap();
+                if HashTableEntity::is_zero_entity(entity) || entity.key_equals(key, hash_value) {
+                    return place_value;
+                }
+                place_value = self.grower.next_place(place_value);
             }
-            place_value = self.grower.next_place(place_value);
         }
     }
 
@@ -125,7 +138,7 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
 
     #[inline(always)]
     fn insert_if_zero_key(&mut self, key: &Key, hash_value: u64, _inserted: bool) -> Option<*mut HashTableEntity> {
-        if HashTableEntity::is_zero_s(key) {
+        if HashTableEntity::is_zero_key(key) {
             if self.zero_entity.is_none() {
                 unsafe {
                     let layout = Layout::from_size_align_unchecked(mem::size_of::<HashTableEntity>(), mem::align_of::<HashTableEntity>());
@@ -152,9 +165,11 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
 
         // Realloc memory
         if new_grower.max_size() > self.grower.max_size() {
+
             let new_size = (new_grower.max_size() as usize) * std::mem::size_of::<HashTableEntity>();
-            let layout = Layout::from_size_align_unchecked(new_size, std::mem::align_of::<HashTableEntity>());
-            self.entities_raw = std::alloc::realloc(self.entities_raw, layout, new_size);
+            let old_bytes_size = (self.grower.max_size() as usize) * std::mem::size_of::<HashTableEntity>();
+            self.entities_raw = self.allocator.realloc(self.entities_raw, old_bytes_size, new_size, std::mem::align_of::<HashTableEntity>()).unwrap();
+            // self.entities_raw = std::alloc::realloc(self.entities_raw, layout, new_size);
             self.entities = self.entities_raw as *mut HashTableEntity;
             self.entities.offset(self.grower.max_size()).write_bytes(0, (new_grower.max_size() - self.grower.max_size()) as usize);
             self.grower = new_grower;

@@ -1,7 +1,8 @@
-pub trait IHashTableEntity<Key>
+pub trait IHashTableEntity<Key, Derived>
 {
     fn new_zero() -> Self;
-    fn is_zero_s(key: &Key) -> bool;
+    fn is_zero_key(key: &Key) -> bool;
+    fn is_zero_entity(derived: &Derived) -> bool;
 
     fn is_zero(&self) -> bool;
     fn set_zero(&mut self);
@@ -24,7 +25,7 @@ impl PartialEq for DefaultHashTableEntity {
     }
 }
 
-impl IHashTableEntity<i32> for DefaultHashTableEntity
+impl IHashTableEntity<i32, DefaultHashTableEntity> for DefaultHashTableEntity
 {
     fn new_zero() -> Self {
         DefaultHashTableEntity {
@@ -33,10 +34,16 @@ impl IHashTableEntity<i32> for DefaultHashTableEntity
         }
     }
 
-    fn is_zero_s(key: &i32) -> bool {
+    fn is_zero_key(key: &i32) -> bool {
         *key == 0
     }
 
+    #[inline(always)]
+    fn is_zero_entity(derived: &DefaultHashTableEntity) -> bool {
+        derived.key == 0
+    }
+
+    #[inline(always)]
     fn is_zero(&self) -> bool {
         self.key == 0
     }
