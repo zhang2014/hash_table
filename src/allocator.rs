@@ -23,7 +23,14 @@ impl DefaultAllocator {
         libc::sysconf(libc::_SC_PAGESIZE) as usize
     }
 
-    // #[cfg(target_os != "linux")]
+    #[cfg(target_os = "linux")]
+    unsafe fn mremap(alloc_old_mmap: *mut u8, new_size: usize, old_size: usize, flags: u32, mmap_prot: i32, mmap_flags: i32) -> Result<*mut u8> {
+        println!("linux mremap");
+        return Result::Ok(libc::mremap(alloc_old_mmap as *mut _ as *mut libc::c_void,
+            old_size, new_size, libc::MREMAP_MAYMOVE, mmap_prot, mmap_flags | libc::MAP_POPULATE, -1, 0));
+    }
+
+    #[cfg(not(target_os = "linux"))]
     unsafe fn mremap(alloc_old_mmap: *mut u8, new_size: usize, old_size: usize, flags: u32, mmap_prot: i32, mmap_flags: i32) -> Result<*mut u8> {
         if new_size < old_size {
             Result::Ok(alloc_old_mmap)
