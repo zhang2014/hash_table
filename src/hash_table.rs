@@ -73,7 +73,7 @@ impl<Key, HashTableEntity: IHashTableEntity<Key>, Hasher: IHasher<Key>, Grower: 
             let place_value = self.find_entity(key, hash_value);
             unsafe {
                 let value = self.entities.offset(place_value);
-                return match value.as_ref().unwrap().is_zero() {
+                return match HashTableEntity::is_zero_entity(value.as_ref().unwrap()) {
                     true => None,
                     false => Some(value)
                 };
@@ -88,7 +88,7 @@ impl<Key, HashTableEntity: IHashTableEntity<Key>, Hasher: IHasher<Key>, Grower: 
         let mut place_value = self.grower.place(hash_value);
         loop {
             let entity = unsafe { self.entities.offset(place_value as isize).as_ref() }.unwrap();
-            if entity.is_zero() || entity.key_equals(key, hash_value) {
+            if HashTableEntity::is_zero_entity(entity) || entity.key_equals(key, hash_value) {
                 return place_value;
             }
             place_value = self.grower.next_place(place_value);
@@ -106,18 +106,18 @@ impl<Key, HashTableEntity: IHashTableEntity<Key>, Hasher: IHasher<Key>, Grower: 
         unsafe {
             let entity = self.entities.offset(place_value).as_mut().unwrap();
 
-            if !entity.is_zero() {
+            if !HashTableEntity::is_zero_entity(entity) {
                 // inserted = false;
                 return self.entities.offset(place_value);
             }
 
             self.size += 1;
-            entity.set_key_and_hash(key, hash_value);
+            HashTableEntity::set_entity_key_and_hash(entity, key, hash_value);
 
             if self.grower.overflow(self.size) {
                 self.resize();
                 let new_place = self.find_entity(key, hash_value);
-                std::assert!(!self.entities.offset(new_place).as_ref().unwrap().is_zero());
+                std::assert!(!HashTableEntity::is_zero_entity(self.entities.offset(new_place).as_ref().unwrap()));
                 return self.entities.offset(place_value);
             }
 
@@ -135,7 +135,7 @@ impl<Key, HashTableEntity: IHashTableEntity<Key>, Hasher: IHasher<Key>, Grower: 
                     self.size += 1;
                     self.zero_entity_raw = Some(std::alloc::alloc_zeroed(layout));
                     self.zero_entity = Some(self.zero_entity_raw.unwrap() as *mut HashTableEntity);
-                    self.zero_entity.unwrap().as_mut().unwrap().set_key_and_hash(key, hash_value);
+                    HashTableEntity::set_entity_key_and_hash(self.zero_entity.unwrap().as_mut().unwrap(), key, hash_value);
                 }
             };
 
@@ -165,7 +165,7 @@ impl<Key, HashTableEntity: IHashTableEntity<Key>, Hasher: IHasher<Key>, Grower: 
                 let entity_ptr = self.entities.offset(index);
                 let entity = entity_ptr.as_mut().unwrap();
 
-                if !entity_ptr.as_mut().unwrap().is_zero() {
+                if !HashTableEntity::is_zero_entity(entity_ptr.as_mut().unwrap()){
                     self.reinsert(entity_ptr, entity.get_hash());
                 }
             }
@@ -180,7 +180,7 @@ impl<Key, HashTableEntity: IHashTableEntity<Key>, Hasher: IHasher<Key>, Grower: 
             for index in old_size..self.grower.max_size() {
                 let entity = self.entities.offset(index).as_mut().unwrap();
 
-                if !entity.is_zero() {
+                if !HashTableEntity::is_zero_entity(entity) {
                     return;
                 }
                 self.reinsert(self.entities.offset(index), entity.get_hash());
@@ -194,7 +194,7 @@ impl<Key, HashTableEntity: IHashTableEntity<Key>, Hasher: IHasher<Key>, Grower: 
 
         if entity.as_ref().unwrap() != self.entities.offset(place_value).as_ref().unwrap() {
             place_value = self.find_entity(entity.as_ref().unwrap().get_key(), hash_value);
-            if self.entities.offset(place_value).as_ref().unwrap().is_zero() {
+            if HashTableEntity::is_zero_entity(self.entities.offset(place_value).as_ref().unwrap()) {
                 std::mem::swap(entity.as_mut().unwrap(), self.entities.offset(place_value).as_mut().unwrap());
             }
         }
