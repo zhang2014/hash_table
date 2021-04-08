@@ -1,10 +1,8 @@
-pub trait IHashTableEntity<Key>
+pub trait IHashTableEntity<Key>: Sized + PartialEq
 {
-    fn new_zero() -> Self;
-    fn is_zero_s(key: &Key) -> bool;
+    fn is_zero_key(key: &Key) -> bool;
 
     fn is_zero(&self) -> bool;
-    fn set_zero(&mut self);
     fn key_equals(&self, key: &Key, hash: u64) -> bool;
     fn set_key_and_hash(&mut self, key: &Key, hash: u64);
 
@@ -26,24 +24,12 @@ impl PartialEq for DefaultHashTableEntity {
 
 impl IHashTableEntity<i32> for DefaultHashTableEntity
 {
-    fn new_zero() -> Self {
-        DefaultHashTableEntity {
-            key: 0,
-            hash: 0,
-        }
-    }
-
-    fn is_zero_s(key: &i32) -> bool {
+    fn is_zero_key(key: &i32) -> bool {
         *key == 0
     }
 
     fn is_zero(&self) -> bool {
         self.key == 0
-    }
-
-    fn set_zero(&mut self) {
-        self.key = 0;
-        self.hash = 0;
     }
 
     fn key_equals(&self, key: &i32, _hash: u64) -> bool {

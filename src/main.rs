@@ -4,8 +4,8 @@ use crate::hash_table::DefaultHasher;
 mod hash_table;
 
 fn main() {
-    rust_hash_map_bench(100000000);
-    rust_btree_map_bench(100000000);
+    // rust_hash_map_bench(100000000);
+    // rust_btree_map_bench(100000000);
     hash_table_bench(100000000);
 }
 
