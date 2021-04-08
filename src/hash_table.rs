@@ -94,9 +94,6 @@ impl<Key, HashTableEntity: IHashTableEntity<Key, HashTableEntity> + Sized + Part
         let mut place_value = self.grower.place(hash_value);
         loop {
             unsafe {
-                let next_place_value = self.grower.next_place(place_value);
-                // std::intrinsics::prefetch_read_data(self.entities.offset(next_place_value), 0);
-
                 let entity = self.entities.offset(place_value).as_ref().unwrap();
                 if HashTableEntity::is_zero_entity(entity) || entity.key_equals(key, hash_value) {
                     return place_value;
