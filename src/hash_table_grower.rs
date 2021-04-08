@@ -1,6 +1,6 @@
-pub trait IHashTableGrower {
+pub trait IHashTableGrower: Clone + Default {
     fn max_size(&self) -> isize;
-    fn overflow(&self, size:usize) ->bool;
+    fn overflow(&self, size: usize) -> bool;
     fn place(&self, hash_value: u64) -> isize;
     fn next_place(&self, old_place: isize) -> isize;
 

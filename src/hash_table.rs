@@ -8,7 +8,7 @@ include!("hash_table_grower.rs");
 include!("hash_table_hasher.rs");
 include!("hash_table_utilities.rs");
 
-pub struct HashTable<Key, HashTableEntity: IHashTableEntity<Key>, Hasher: IHasher<Key>, Grower: IHashTableGrower + Default + Clone> {
+pub struct HashTable<Key, HashTableEntity: IHashTableEntity<Key>, Hasher: IHasher<Key>, Grower: IHashTableGrower> {
     size: usize,
     grower: Grower,
     entities: *mut HashTableEntity,
@@ -21,7 +21,7 @@ pub struct HashTable<Key, HashTableEntity: IHashTableEntity<Key>, Hasher: IHashe
     hasher_hold: PhantomData<Hasher>,
 }
 
-impl<Key, HashTableEntity: IHashTableEntity<Key>, Hasher: IHasher<Key>, Grower: IHashTableGrower + Default + Clone> Drop for HashTable<Key, HashTableEntity, Hasher, Grower> {
+impl<Key, HashTableEntity: IHashTableEntity<Key>, Hasher: IHasher<Key>, Grower: IHashTableGrower> Drop for HashTable<Key, HashTableEntity, Hasher, Grower> {
     fn drop(&mut self) {
         unsafe {
             let size = (self.grower.max_size() as usize) * mem::size_of::<HashTableEntity>();
@@ -36,7 +36,7 @@ impl<Key, HashTableEntity: IHashTableEntity<Key>, Hasher: IHasher<Key>, Grower: 
     }
 }
 
-impl<Key, HashTableEntity: IHashTableEntity<Key>, Hasher: IHasher<Key>, Grower: IHashTableGrower + Default + Clone> HashTable<Key, HashTableEntity, Hasher, Grower> {
+impl<Key, HashTableEntity: IHashTableEntity<Key>, Hasher: IHasher<Key>, Grower: IHashTableGrower> HashTable<Key, HashTableEntity, Hasher, Grower> {
     pub fn new() -> HashTable<Key, HashTableEntity, Hasher, Grower> {
         // TODO:
         let size = (1 << 8) * mem::size_of::<HashTableEntity>();
