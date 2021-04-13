@@ -86,9 +86,10 @@ impl<Key, HashTableEntity: IHashTableEntity<Key>, Hasher: IHasher<Key>, Grower: 
     #[inline(always)]
     fn find_entity(&self, key: &Key, hash_value: u64) -> isize {
         unsafe {
+            let temp_key = HashTableEntity::clone_key(key);
             let mut place_value = self.grower.place(hash_value);
 
-            while !HashTableEntity::is_same_or_empty_entity(self.entities.offset(place_value).as_ref().unwrap(), key) {
+            while !HashTableEntity::is_same_or_empty_entity(self.entities.offset(place_value).as_ref().unwrap(), temp_key) {
                 place_value = self.grower.next_place(place_value);
             }
 

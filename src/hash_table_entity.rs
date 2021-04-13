@@ -1,10 +1,11 @@
 pub trait IHashTableEntity<Key>: Sized + PartialEq
 {
+    fn clone_key(key: &Key) -> Key;
     fn is_zero_key(key: &Key) -> bool;
     fn key_equals(&self, key: &Key, hash: u64) -> bool;
 
     fn is_zero_entity(entity: &Self) -> bool;
-    fn is_same_or_empty_entity(entity: &Self, key: &Key) -> bool;
+    fn is_same_or_empty_entity(entity: &Self, key: Key) -> bool;
     fn set_entity_key_and_hash(entity: &mut Self, key: &Key, hash: u64);
 
     fn get_key(&self) -> &Key;
@@ -25,6 +26,10 @@ impl PartialEq for DefaultHashTableEntity {
 
 impl IHashTableEntity<i32> for DefaultHashTableEntity
 {
+    fn clone_key(key: &i32) -> i32 {
+        *key
+    }
+
     #[inline(always)]
     fn is_zero_key(key: &i32) -> bool {
         *key == 0
@@ -39,7 +44,7 @@ impl IHashTableEntity<i32> for DefaultHashTableEntity
         entity.key == 0
     }
 
-    fn is_same_or_empty_entity(entity: &Self, key: &i32) -> bool {
+    fn is_same_or_empty_entity(entity: &Self, key: i32) -> bool {
         DefaultHashTableEntity::is_zero_entity(entity) || entity.key == key
     }
 
