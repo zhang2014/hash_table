@@ -85,13 +85,14 @@ impl<Key, HashTableEntity: IHashTableEntity<Key>, Hasher: IHasher<Key>, Grower: 
 
     #[inline(always)]
     fn find_entity(&self, key: &Key, hash_value: u64) -> isize {
-        let mut place_value = self.grower.place(hash_value);
-        loop {
-            let entity = unsafe { self.entities.offset(place_value as isize).as_ref() }.unwrap();
-            if HashTableEntity::is_zero_entity(entity) || entity.key_equals(key, hash_value) {
-                return place_value;
+        unsafe {
+            let mut place_value = self.grower.place(hash_value);
+
+            while !HashTableEntity::is_same_or_empty_entity(self.entities.offset(place_value).as_ref().unwrap(), key) {
+                place_value = self.grower.next_place(place_value);
             }
-            place_value = self.grower.next_place(place_value);
+
+            return place_value;
         }
     }
 
