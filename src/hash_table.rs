@@ -1,10 +1,12 @@
 use std::alloc::Layout;
 use std::marker::PhantomData;
 use std::mem;
+// use crate::hash_table_iter::HashTableIter;
 
 include!("hash_table_entity.rs");
 include!("hash_table_grower.rs");
 include!("hash_table_hasher.rs");
+// include!("hash_table_iter.rs");
 
 pub struct HashTable<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IHasher<Key>, Grower: IHashTableGrower + Default + Clone> {
     size: usize,
@@ -53,6 +55,16 @@ impl<Key, HashTableEntity: IHashTableEntity<Key> + Sized + PartialEq, Hasher: IH
                 hasher_hold: PhantomData,
             }
         }
+    }
+
+    #[inline(always)]
+    pub fn len(&self) -> usize {
+        self.size
+    }
+
+    #[inline(always)]
+    pub fn iter(&self) -> impl Iterator<Item=*mut HashTableEntity> {
+        HashTableIter::new(self.size as isize, self.entities.clone(), self.zero_entity.clone())
     }
 
     #[inline(always)]
@@ -214,6 +226,47 @@ fn test_hash_table() {
         for number in numbers.clone() {
             assert_eq!(hash_table.find_key(&number).unwrap().as_ref().unwrap().key, number);
         }
+    }
+}
+
+pub struct HashTableIter<Key, HashTableEntity: IHashTableEntity<Key>> {
+    idx: isize,
+    size: isize,
+    entities: *mut HashTableEntity,
+    zero_entity: Option<*mut HashTableEntity>,
+    ss: PhantomData<Key>,
+
+}
+
+impl<Key, HashTableEntity: IHashTableEntity<Key>> HashTableIter<Key, HashTableEntity> {
+    pub fn new(size: isize, entities: *mut HashTableEntity, zero_entity: Option<*mut HashTableEntity>) -> Self {
+        Self {
+            idx: 0,
+            size,
+            entities,
+            zero_entity,
+            ss: PhantomData::default(),
+        }
+    }
+}
+
+impl<Key, HashTableEntity: IHashTableEntity<Key>> Iterator for HashTableIter<Key, HashTableEntity> {
+    type Item = *mut HashTableEntity;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(entity) = self.zero_entity.take() {
+            return Some(entity);
+        }
+
+        if self.idx < self.size {
+            return unsafe {
+                let res = Some(self.entities.offset(self.idx));
+                self.idx += 1;
+                res
+            }
+        }
+
+        None
     }
 }
 

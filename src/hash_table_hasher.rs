@@ -11,8 +11,7 @@ pub struct DefaultHasher<T> {
 
 macro_rules! primitive_hasher_impl {
     ($primitive_type:ty) => {
-        impl IHasher<$primitive_type> for DefaultHasher<$primitive_type>
-        {
+        impl IHasher<$primitive_type> for DefaultHasher<$primitive_type> {
             #[inline(always)]
             fn hash(key: &$primitive_type) -> u64 {
                 let mut hash_value = *key as u64;
